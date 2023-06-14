@@ -1,0 +1,283 @@
+<html>
+<title>Teste NetDeal</title>
+<head>
+
+<style>
+.balao {
+	display: inline-block;
+	position: relative;
+	margin: 10px;
+	padding: 5px;
+	background-color: #f0f0f0;
+	border-radius: 4px;
+	font-family: Arial, sans-serif;
+	font-size: 12px;
+	color: #333;
+}
+
+.balao::before {
+	content: attr(data-option);
+	position: absolute;
+	top: -20px;
+	left: 50%;
+	transform: translateX(-50%);
+	padding: 4px 8px;
+	background-color: #333;
+	color: #fff;
+	border-radius: 4px;
+	font-size: 12px;
+	text-transform: uppercase;
+	visibility: hidden;
+}
+
+.balao:hover::before {
+	visibility: visible;
+}
+
+.balao[data-option="FORTE"] {
+	background-color: #007bff;
+}
+
+.balao[data-option="MODERADA"] {
+	background-color: #ffc107;
+}
+
+.balao[data-option="FRACA"] {
+	background-color: #ff4d4d;
+}
+
+.balao[data-option="MUITO_FORTE"] {
+	background-color: #28a745;
+}
+.form-container {
+	width: 300px;
+	margin: 0 auto;
+}
+
+.form-field {
+	margin-bottom: 10px;
+}
+
+.form-field label {
+	display: block;
+	font-weight: bold;
+	margin-bottom: 5px;
+}
+
+.form-field input[type="text"],
+.form-field input[type="password"],
+.form-field select {
+	width: 100%;
+	padding: 5px;
+}
+
+.submit-button {
+	width: 100%;
+	padding: 10px;
+	background-color: #4CAF50;
+	color: #fff;
+	font-weight: bold;
+	border: none;
+	cursor: pointer;
+}
+
+.submit-button:hover {
+	background-color: #45a049;
+}
+
+.tree {
+	font-family: Arial, sans-serif;
+}
+
+.tree ul {
+	padding-left: 20px;
+	position: relative;
+}
+
+.tree li {
+	list-style-type: none;
+	position: relative;
+	padding-left: 1em;
+	line-height: 1.5em;
+}
+
+.tree li::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -15px;
+	border-left: 1px solid #ccc;
+	border-bottom: 1px solid #ccc;
+	width: 14px;
+	height: 100%;
+}
+
+.tree li:first-child::before {
+	border-top: 1px solid #ccc;
+}
+
+.tree li:last-child::before {
+	height: 50%;
+	bottom: 0;
+}
+
+.tree li:after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: -7px;
+	border-left: 1px solid #ccc;
+	width: 7px;
+	height: 100%;
+}
+
+.tree li a {
+	display: inline-block;
+	padding: 0.5em 1em;
+	text-decoration: none;
+	color: #333;
+	background-color: #fff;
+	border-radius: 5px;
+}
+</style>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+
+$(document).ready(function() {
+		
+	$.ajax({
+		url: 'http://localhost:8080/usuario',
+		type: 'GET',
+		dataType: 'json',
+		success: function(data) {	
+
+			const userHierarchy = document.getElementById('userHierarchy');			
+			userHierarchy.innerHTML = '<ul>' + createHierarchy(data, null, 0) + '</ul>';
+		
+			const superiorSelect = $('#superior');		
+			// Limpa as opções existentes
+			superiorSelect.empty();
+
+			// Preenche as opções com os dados da API
+			$.each(data, function(index, superior) {
+				superiorSelect.append('<option value="' + superior.id + '">' + superior.nome + '</option>');					
+			});
+			
+		},
+		error: function(error) {
+			console.error(error);
+		}
+	});
+	
+	function fillData(){
+		$.ajax({
+			url: 'http://localhost:8080/usuario',
+			type: 'GET',
+			dataType: 'json',
+			success: function(data) {			
+							
+				const userHierarchy = document.getElementById('userHierarchy');			
+				userHierarchy.innerHTML = '<ul>' + createHierarchy(data, null, 0) + '</ul>';
+				
+				const superiorSelect = $('#superior');
+
+				// Limpa as opções existentes
+				superiorSelect.empty();
+
+				// Preenche as opções com os dados da API
+				$.each(data, function(index, superior) {
+					superiorSelect.append('<option value="' + superior.id + '">' + superior.nome + '</option>');					
+				});
+				
+			},
+			error: function(error) {
+				console.error(error);
+			}
+		});
+	}
+
+		
+	// Função para criar a hierarquia de usuários
+	function createHierarchy(users, hierarquia, level) {
+		let html = '';
+
+		for (const user of users) {
+			if (user.hierarquia === hierarquia) {
+				html += '<li>';
+				html += '<a href="#">' + user.nome + '<div class="balao" data-option="' + user.forcaSenha + '">' + user.forcaSenha.replace('_',' ') +  '</div></a>';
+
+				const childUsers = createHierarchy(users, user.id, level + 1);
+				if (childUsers) {
+					html += '<ul>' + childUsers + '</ul>';
+				}
+
+				html += '</li>';
+			}
+		}
+
+		return html;
+	}
+	
+
+	$('#myForm').submit(function(event) {
+		$('#erros').fadeOut()
+		event.preventDefault();
+
+		const formData = {
+			nome: $('#nome').val(),
+			senha: $('#senha').val(),
+			hierarquia: $('#superior').val() == "0" ? null : $('#superior').val()
+		};
+		
+		$.ajax({
+			url: 'http://localhost:8080/usuario',
+			type: 'POST',
+			beforeSend: function(request) {
+			   request.setRequestHeader("X-Token", "myToken123");
+		    },
+			contentType: 'application/json',
+			data: JSON.stringify(formData),
+			success: function(data) {
+				fillData();
+			},
+			error: function(error) {				
+				$('#erros').fadeIn()
+			}
+		});
+	});
+});
+
+
+        
+</script>
+</head>
+
+<body>
+
+    <div class="form-container">
+	<form id="myForm">
+	<div class="form-field">
+        <label for="name">Nome:</label>
+        <input type="text" id="nome" name="nome"><br><br>
+	</div>
+	<div class="form-field">
+        <label for="email">Senha:</label>		
+        <input type="password" id="senha" name="senha"><br><br>
+	</div>
+	<div class="form-field">
+        <label for="message">Superior:</label>
+		<select id="superior" name="superior">
+		<option value="0">:::::::::::::::::::::::::::SELECIONE:::::::::::::::::::::::::::</option>				
+		</select>
+	</div>
+    <button class="submit-button" type="submit">Enviar</button>
+	<div id="erros" style="display: none">Campos "nome" e "senha" de preenchimento obrigatório.</div>
+    </form>
+    </div>
+	
+	<div class="tree" id="userHierarchy"></div>
+</body>
+
+</html>
